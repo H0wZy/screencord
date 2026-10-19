@@ -1,0 +1,28 @@
+{
+  "name": "screencord",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ultra-lightweight self-hosted Discord alternative for voice and screen sharing calls without Electron",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev",
+    "build": "npm --prefix server run build && npm --prefix client run build",
+    "start": "npm --prefix server run start",
+    "install:all": "npm install && npm --prefix server install && npm --prefix client install"
+  },
+  "keywords": [
+    "screencord",
+    "webrtc",
+    "screen-sharing",
+    "voice-call",
+    "self-hosted",
+    "discord-alternative",
+    "lightweight"
+  ],
+  "author": "H0wZy",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

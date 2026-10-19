@@ -15,9 +15,9 @@
 
 **Purpose**: Project initialization and monorepo workspace configuration.
 
-- [ ] T001 Initialize monorepo root configuration, start scripts, and TypeScript config in `package.json` and `tsconfig.json`
-- [ ] T002 [P] Setup signaling server workspace with TypeScript, Node.js, and WebSocket dependencies in `server/package.json` and `server/tsconfig.json`
-- [ ] T003 [P] Setup client workspace with React 19, Vite, Tailwind CSS, and Lucide icons in `client/package.json`, `client/vite.config.ts`, and `client/index.html`
+- [X] T001 Initialize monorepo root configuration, start scripts, and TypeScript config in `package.json` and `tsconfig.json`
+- [X] T002 [P] Setup signaling server workspace with TypeScript, Node.js, and WebSocket dependencies in `server/package.json` and `server/tsconfig.json`
+- [X] T003 [P] Setup client workspace with React 19, Vite, Tailwind CSS, and Lucide icons in `client/package.json`, `client/vite.config.ts`, and `client/index.html`
 
 ---
 
@@ -27,12 +27,12 @@
 
 **⚠️ CRITICAL**: Must be completed before user story implementation begins.
 
-- [ ] T004 Define shared WebSocket signaling protocol types and message schemas in `server/types.ts`
-- [ ] T005 [P] Define client-side application, participant, and stream state types in `client/src/types.ts`
-- [ ] T006 Implement in-memory Room and Participant lifecycle manager in `server/rooms.ts`
-- [ ] T007 Implement HTTP server and WebSocket signaling endpoint with room routing in `server/index.ts`
-- [ ] T008 [P] Implement client WebSocket signaling client with auto-reconnect and typed event dispatching in `client/src/webrtc/signalingClient.ts`
-- [ ] T009 [P] Implement WebRTC PeerManager orchestrating multi-peer `RTCPeerConnection` mesh, ICE negotiation, and SDP exchange in `client/src/webrtc/peerManager.ts`
+- [X] T004 Define shared WebSocket signaling protocol types and message schemas in `server/src/types.ts`
+- [X] T005 [P] Define client-side application, participant, and stream state types in `client/src/types.ts`
+- [X] T006 Implement in-memory Room and Participant lifecycle manager in `server/src/rooms.ts`
+- [X] T007 Implement HTTP server and WebSocket signaling endpoint with room routing in `server/src/index.ts`
+- [X] T008 [P] Implement client WebSocket signaling client with auto-reconnect and typed event dispatching in `client/src/webrtc/signalingClient.ts`
+- [X] T009 [P] Implement WebRTC PeerManager orchestrating multi-peer `RTCPeerConnection` mesh, ICE negotiation, and SDP exchange in `client/src/webrtc/peerManager.ts`
 
 **Checkpoint**: Core signaling and WebRTC mesh foundation ready. User stories can now proceed.
 
@@ -44,11 +44,11 @@
 
 **Independent Test**: Connect two browser windows to `http://localhost:3000`, join room `lobby`. Start screen share on Client 1 selecting Monitor 1 with system audio enabled. Verify Client 2 displays live 60 FPS video and plays PC audio without interrupting voice.
 
-- [ ] T010 [US1] Implement monitor display and loopback system audio capture helpers using `getDisplayMedia` in `client/src/webrtc/mediaCapture.ts`
-- [ ] T011 [US1] Implement screen track publishing, renegotiation, and track-stop handling in `client/src/webrtc/peerManager.ts`
-- [ ] T012 [P] [US1] Create full-screen video player tile with stream statistics, presenter badge, and audio indicator in `client/src/components/StreamTile.tsx`
-- [ ] T013 [US1] Create Discord-styled bottom control bar with Screen Share toggle button in `client/src/components/ControlBar.tsx`
-- [ ] T014 [US1] Assemble primary voice channel view displaying the active screen share stream in `client/src/components/ChannelView.tsx`
+- [X] T010 [US1] Implement monitor display and loopback system audio capture helpers using `getDisplayMedia` in `client/src/webrtc/mediaCapture.ts`
+- [X] T011 [US1] Implement screen track publishing, renegotiation, and track-stop handling in `client/src/webrtc/peerManager.ts`
+- [X] T012 [P] [US1] Create full-screen video player tile with stream statistics, presenter badge, and audio indicator in `client/src/components/StreamTile.tsx`
+- [X] T013 [US1] Create Discord-styled bottom control bar with Screen Share toggle button in `client/src/components/ControlBar.tsx`
+- [X] T014 [US1] Assemble primary voice channel view displaying the active screen share stream in `client/src/components/ChannelView.tsx`
 
 **Checkpoint**: User Story 1 complete! Standalone MVP delivers full-screen monitor + system audio sharing over `localhost`.
 
@@ -60,10 +60,10 @@
 
 **Independent Test**: Start window share on Client 1 selecting a specific game or app window. Verify Client 2 sees only that window's visuals and hears its audio, even when Client 1 minimizes or covers the window.
 
-- [ ] T015 [US2] Enhance `mediaCapture.ts` with display surface detection (`monitor` vs `window`) and window audio extraction in `client/src/webrtc/mediaCapture.ts`
-- [ ] T016 [P] [US2] Create screen share source selection modal dialog with Monitor and Window picker tabs in `client/src/components/ScreenPickerModal.tsx`
-- [ ] T017 [US2] Handle window minimize/pause events and graceful stream recovery callbacks in `client/src/webrtc/mediaCapture.ts`
-- [ ] T018 [US2] Integrate source picker modal into bottom toolbar in `client/src/components/ControlBar.tsx`
+- [X] T015 [US2] Enhance `mediaCapture.ts` with display surface detection (`monitor` vs `window`) and window audio extraction in `client/src/webrtc/mediaCapture.ts`
+- [X] T016 [P] [US2] Create screen share source selection modal dialog with Monitor and Window picker tabs in `client/src/components/ScreenPickerModal.tsx`
+- [X] T017 [US2] Handle window minimize/pause events and graceful stream recovery callbacks in `client/src/webrtc/mediaCapture.ts`
+- [X] T018 [US2] Integrate source picker modal into bottom toolbar in `client/src/components/ControlBar.tsx`
 
 **Checkpoint**: User Story 2 complete! Both full-screen and per-window application streaming are functional.
 
@@ -75,11 +75,11 @@
 
 **Independent Test**: Multiple users join via room URL. When users speak, green speaking rings illuminate around their avatars. Muting microphone or turning off camera stops transmission instantly.
 
-- [ ] T019 [US3] Implement microphone voice and camera video capture helpers in `client/src/webrtc/mediaCapture.ts`
-- [ ] T020 [P] [US3] Implement Web Audio API `AnalyserNode` for local voice activity detection (VAD) and speaking indicators in `client/src/webrtc/audioDetector.ts`
-- [ ] T021 [P] [US3] Create participant avatar card with green speaking halo ring, mute badge, and camera tile in `client/src/components/UserTile.tsx`
-- [ ] T022 [US3] Add Mute, Deafen, and Webcam toggle controls with hotkey support in `client/src/components/ControlBar.tsx`
-- [ ] T023 [US3] Implement room join header with shareable room link and participant count in `client/src/components/RoomHeader.tsx`
+- [X] T019 [US3] Implement microphone voice and camera video capture helpers in `client/src/webrtc/mediaCapture.ts`
+- [X] T020 [P] [US3] Implement Web Audio API `AnalyserNode` for local voice activity detection (VAD) and speaking indicators in `client/src/webrtc/audioDetector.ts`
+- [X] T021 [P] [US3] Create participant avatar card with green speaking halo ring, mute badge, and camera tile in `client/src/components/UserTile.tsx`
+- [X] T022 [US3] Add Mute, Deafen, and Webcam toggle controls with hotkey support in `client/src/components/ControlBar.tsx`
+- [X] T023 [US3] Implement room join header with shareable room link and participant count in `client/src/components/RoomHeader.tsx`
 
 **Checkpoint**: User Story 3 complete! Full voice, webcam, and speaking detection operating alongside screen streams.
 
@@ -91,10 +91,10 @@
 
 **Independent Test**: In a call with multiple streams, double-click a stream to enter theater mode. Adjust a remote user's voice volume to 50% and screen volume to 120% using local `GainNode` mixers.
 
-- [ ] T024 [US4] Implement Web Audio API `AudioContext` and `GainNode` audio mixer for independent remote peer volume scaling in `client/src/webrtc/audioMixer.ts`
-- [ ] T025 [P] [US4] Create popover volume slider component for participant voice and stream audio in `client/src/components/VolumeSlider.tsx`
-- [ ] T026 [US4] Implement dynamic grid view with Theater and Fullscreen toggles for active screen shares in `client/src/components/StreamGrid.tsx`
-- [ ] T027 [US4] Integrate audio mixer state and remote volume persistence in `client/src/components/ChannelView.tsx`
+- [X] T024 [US4] Implement Web Audio API `AudioContext` and `GainNode` audio mixer for independent remote peer volume scaling in `client/src/webrtc/audioMixer.ts`
+- [X] T025 [P] [US4] Create popover volume slider component for participant voice and stream audio in `client/src/components/VolumeSlider.tsx`
+- [X] T026 [US4] Implement dynamic grid view with Theater and Fullscreen toggles for active screen shares in `client/src/components/StreamGrid.tsx`
+- [X] T027 [US4] Integrate audio mixer state and remote volume persistence in `client/src/components/ChannelView.tsx`
 
 **Checkpoint**: User Story 4 complete! Advanced layout, theater mode, and fine-grained audio mixer active.
 
@@ -104,9 +104,9 @@
 
 **Purpose**: Styling, responsive optimization, and validation against Constitution performance gates.
 
-- [ ] T028 [P] Refine Discord-inspired dark theme palette, typography, and responsive styles in `client/src/index.css`
-- [ ] T029 Wire complete application state, room navigation, and room creation in `client/src/App.tsx`
-- [ ] T030 Execute and verify all scenarios in `specs/001-screen-sharing-call/quickstart.md`
+- [X] T028 [P] Refine Discord-inspired dark theme palette, typography, and responsive styles in `client/src/index.css`
+- [X] T029 Wire complete application state, room navigation, and room creation in `client/src/App.tsx`
+- [X] T030 Execute and verify all scenarios in `specs/001-screen-sharing-call/quickstart.md`
 
 ---
 
