@@ -9,6 +9,7 @@ import { RoomHeader } from './RoomHeader.js';
 import { StreamGrid } from './StreamGrid.js';
 import { ControlBar } from './ControlBar.js';
 import { ScreenPickerModal } from './ScreenPickerModal.js';
+import { SettingsModal } from './SettingsModal.js';
 
 interface ChannelViewProps {
   roomId: string;
@@ -39,6 +40,7 @@ export const ChannelView: React.FC<ChannelViewProps> = ({
   const [localScreenStream, setLocalScreenStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<RemoteStream[]>([]);
   const [isScreenModalOpen, setIsScreenModalOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isTheater, setIsTheater] = useState(false);
   const [, setMixerVersion] = useState(0);
 
@@ -211,7 +213,6 @@ export const ChannelView: React.FC<ChannelViewProps> = ({
   // Toggle Camera
   const handleToggleCamera = async () => {
     if (self.isCameraOn) {
-      // Turn off camera
       if (localUserStream) {
         localUserStream.getVideoTracks().forEach((t) => t.stop());
         const remainingTracks = localUserStream.getAudioTracks();
@@ -222,7 +223,6 @@ export const ChannelView: React.FC<ChannelViewProps> = ({
       setSelf((prev) => ({ ...prev, isCameraOn: false }));
       signalingRef.current?.updateState({ isCameraOn: false });
     } else {
-      // Turn on camera
       try {
         const camStream = await MediaCaptureService.captureUserMedia({ video: true, audio: false });
         const videoTrack = camStream.getVideoTracks()[0];
@@ -247,7 +247,6 @@ export const ChannelView: React.FC<ChannelViewProps> = ({
       setLocalScreenStream(stream);
       peerManagerRef.current?.setLocalScreenStream(stream);
 
-      // Handle user clicking "Stop sharing" in browser native bar
       stream.getVideoTracks()[0].onended = () => {
         handleStopScreenShare();
       };
@@ -298,6 +297,50 @@ export const ChannelView: React.FC<ChannelViewProps> = ({
     setMixerVersion((v) => v + 1);
   };
 
+  const handleUpdateNickname = (newNickname: string) => {
+    setSelf((prev) => ({ ...prev, nickname: newNickname }));
+    localStorage.setItem('screencord_nick', newNickname);
+    // Notify room peers
+    signalingRef.current?.updateState({});
+  };
+
+  const handleUpdateAudioSettings = async (settings: {
+    inputDeviceId: string;
+    outputDeviceId: string;
+    inputVolume: number;
+    outputVolume: number;
+    profile: 'isolation' | 'studio' | 'custom';
+    autoSensitivity: boolean;
+  }) => {
+    console.log('[ChannelView] Applying audio settings:', settings);
+    try {
+      const constraints: MediaTrackConstraints = {
+        deviceId: settings.inputDeviceId && settings.inputDeviceId !== 'default'
+          ? { exact: settings.inputDeviceId }
+          : undefined,
+        echoCancellation: settings.profile !== 'studio',
+        noiseSuppression: settings.profile !== 'studio',
+        autoGainControl: settings.autoSensitivity,
+      };
+
+      const newStream = await navigator.mediaDevices.getUserMedia({ audio: constraints });
+      const newAudioTrack = newStream.getAudioTracks()[0];
+
+      if (newAudioTrack && localUserStream) {
+        const oldAudioTrack = localUserStream.getAudioTracks()[0];
+        if (oldAudioTrack) {
+          oldAudioTrack.stop();
+          localUserStream.removeTrack(oldAudioTrack);
+        }
+        localUserStream.addTrack(newAudioTrack);
+        peerManagerRef.current?.setLocalUserStream(localUserStream);
+        audioDetectorRef.current?.start(newAudioTrack);
+      }
+    } catch (err) {
+      console.warn('Failed to switch audio input device:', err);
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#1e1f22]">
       {/* Top Room Header */}
@@ -326,6 +369,7 @@ export const ChannelView: React.FC<ChannelViewProps> = ({
         onRequestScreenShare={() => setIsScreenModalOpen(true)}
         onStopScreenShare={handleStopScreenShare}
         onDisconnect={onLeaveRoom}
+        onOpenSettings={() => setIsSettingsOpen(true)}
       />
 
       {/* Screen Selection Modal */}
@@ -333,6 +377,15 @@ export const ChannelView: React.FC<ChannelViewProps> = ({
         isOpen={isScreenModalOpen}
         onClose={() => setIsScreenModalOpen(false)}
         onSelectSource={handleStartScreenShare}
+      />
+
+      {/* Discord-style Voice & Audio Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        self={self}
+        onClose={() => setIsSettingsOpen(false)}
+        onUpdateNickname={handleUpdateNickname}
+        onUpdateAudioSettings={handleUpdateAudioSettings}
       />
     </div>
   );

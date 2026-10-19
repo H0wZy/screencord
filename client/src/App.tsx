@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { ChannelView } from './components/ChannelView.js';
-import { ScreenShare, Headphones, Zap, Shield, Sparkles, ArrowRight, Gamepad2 } from 'lucide-react';
+import { SettingsModal } from './components/SettingsModal.js';
+import { ScreenShare, Headphones, Zap, Shield, ArrowRight, Gamepad2, Settings } from 'lucide-react';
+import { Participant } from './types.js';
 
 export const App: React.FC = () => {
   const [inRoom, setInRoom] = useState(false);
   const [roomId, setRoomId] = useState('general');
   const [nickname, setNickname] = useState('');
+  const [isLobbySettingsOpen, setIsLobbySettingsOpen] = useState(false);
 
   useEffect(() => {
     // Check URL parameters for room query
@@ -52,11 +55,35 @@ export const App: React.FC = () => {
     );
   }
 
+  const dummySelf: Participant = {
+    id: 'local_preview',
+    nickname: nickname || 'Gamer',
+    socketId: '',
+    isMuted: false,
+    isDeafened: false,
+    isCameraOn: false,
+    isScreenSharing: false,
+    screenSourceType: null,
+    hasScreenAudio: false,
+    isSpeaking: false,
+  };
+
   return (
     <div className="min-h-screen bg-[#1e1f22] flex flex-col items-center justify-center p-6 relative overflow-hidden">
       {/* Background Glows */}
       <div className="absolute -top-40 -left-40 w-96 h-96 bg-[#5865f2]/15 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-[#57f287]/10 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Top Bar with Settings */}
+      <div className="absolute top-6 right-6 z-20">
+        <button
+          onClick={() => setIsLobbySettingsOpen(true)}
+          className="flex items-center gap-2 bg-[#2b2d31] hover:bg-[#35373c] text-[#dbdee1] hover:text-white px-4 py-2 rounded-full border border-white/5 transition-colors text-xs font-semibold shadow-md"
+        >
+          <Settings size={16} />
+          <span>Configurações & Mic</span>
+        </button>
+      </div>
 
       {/* Main Container */}
       <div className="w-full max-w-md bg-[#2b2d31] rounded-2xl p-8 border border-[#232428] shadow-2xl relative z-10 flex flex-col gap-6 animate-in zoom-in-95 duration-200">
@@ -68,7 +95,7 @@ export const App: React.FC = () => {
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-black tracking-tight text-white">SCREENCORD</h1>
             <span className="text-[10px] uppercase font-bold tracking-wider bg-[#23a55a]/20 text-[#57f287] border border-[#23a55a]/40 px-2 py-0.5 rounded-full">
-              Lite
+              Desktop Native
             </span>
           </div>
           <p className="text-xs text-[#949ba4] max-w-xs">
@@ -154,6 +181,17 @@ export const App: React.FC = () => {
           <span>100% Peer-to-Peer & Localhost. Zero telemetry.</span>
         </div>
       </div>
+
+      {/* Lobby Settings Modal */}
+      <SettingsModal
+        isOpen={isLobbySettingsOpen}
+        self={dummySelf}
+        onClose={() => setIsLobbySettingsOpen(false)}
+        onUpdateNickname={(newNick) => {
+          setNickname(newNick);
+          localStorage.setItem('screencord_nick', newNick);
+        }}
+      />
     </div>
   );
 };

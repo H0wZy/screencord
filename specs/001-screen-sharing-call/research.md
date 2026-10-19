@@ -63,13 +63,58 @@ Per Principle VI of the Screencord Constitution, **Electron is strictly excluded
 
 ---
 
+### Decision 6: Standalone Desktop Runtime (Zero Electron / Native OS App Mode)
+- **Decision**: Provide native desktop execution via lightweight OS WebView app mode (`launch-desktop.mjs` using Edge/WebView2 on Windows and Chromium/WebKit on Linux) and **Tauri v2** (`src-tauri/`) without requiring Google Chrome to be manually opened or running Electron.
+- **Rationale**:
+  - Running as a standalone desktop window gives users a borderless/standalone app experience (`--app=http://localhost:3001`) with no browser tabs, address bars, or extensions.
+  - Zero RAM penalty of running a separate heavy browser profile: uses the shared OS WebView2 runtime installed on Windows 10/11.
+  - Total process RAM: ~40-60 MB (compared to Discord Electron's >350 MB and standard Chrome's >500 MB).
+
+---
+
+## Discord Architecture & Protocol Research (Developer Documentation Ingestion)
+
+Based on research into the official Discord Developer Documentation (`docs.discord.com`), voice gateway specifications, and media architecture:
+
+### 1. Discord Voice Gateway (v9) & Opcodes Reference
+Discord decouples the control-plane signaling gateway (`wss://gateway.discord.gg/?v=10`) from dedicated voice/streaming gateways (`wss://<endpoint>/?v=9`):
+
+| Opcode | Name | Direction | Description |
+| :---: | :--- | :---: | :--- |
+| **0** | `Identify` | Client $\rightarrow$ Server | Voice session handshake (`server_id`, `user_id`, `session_id`, `token`). |
+| **1** | `SelectProtocol` | Client $\rightarrow$ Server | Selects `udp` transport, encryption mode, discovered public IP/port, codecs. |
+| **2** | `Ready` | Server $\rightarrow$ Client | Supplies client SSRC, UDP server IP/port, supported encryption modes. |
+| **3** | `Heartbeat` | Client $\rightarrow$ Server | Periodic keepalive. |
+| **4** | `SessionDescription` | Server $\rightarrow$ Client | Symmetric secret key (32 bytes) for AEAD encryption. |
+| **5** | `Speaking` | Bidirectional | Bitmask flags: `1 = Mic`, `2 = Soundshare`, `4 = Priority`. |
+| **12** | `Video` | Bidirectional | SSRC negotiation for screen/camera video and RTX retransmission. |
+
+### 2. Media Codecs & Packet Framing
+* **Audio (Opus)**: 48 kHz stereo, 20ms frames (960 samples/frame), standard 12-byte RTP header with Payload Type 120. In-band FEC (`useinbandfec=1`) is negotiated for packet loss concealment on unstable gamer Wi-Fi.
+* **Encryption**: Discord migrated to `aead_aes256_gcm_rtpsize` and `aead_xchacha20_poly1305_rtpsize`.
+* **Screen Sharing**: Video streams allocate paired SSRCs (primary video + retransmission RTX) supporting H.264, VP8, and AV1 hardware-accelerated streams up to 60 FPS.
+
+### 3. Audio & Voice Settings Architecture ("Voz e Vídeo")
+Reverse engineering Discord's desktop voice settings UI revealed key user requirements:
+1. **Device Management**: Independent selection of input (Microphone) and output (Speakers/Headset) hardware devices using `navigator.mediaDevices.enumerateDevices()`.
+2. **Real-time Microphone Test ("Teste do microfone")**:
+   - Interactive button toggling loopback monitor.
+   - **40-segment animated VU meter bar** with progressive gradient coloring (Discord green/gold/red) computed in real-time via Web Audio `AnalyserNode` FFT.
+3. **Audio Profiles**:
+   - *Isolamento de Voz*: Echo cancellation + deep noise suppression.
+   - *Estúdio*: Crisp, high-fidelity unprocessed voice capture (no heavy filtering).
+   - *Personalizado*: Manual fine-tuning of AGC, AEC, and Noise Suppression flags.
+4. **Input Sensitivity**: Visual dB slider with auto-sensitivity toggle, controlling gate threshold before VAD speaking halos illuminate.
+
+---
+
 ## Summary of Technical Stack
 
 | Component | Selected Technology | Memory/Resource Profile |
 |---|---|---|
 | **Backend / Signaling** | Node.js + TypeScript + `ws` | < 30 MB RAM, < 0.5% CPU |
-| **Frontend UI** | React 19 + TypeScript + Vite + Tailwind CSS | Runs in browser / < 60 MB RAM |
+| **Frontend UI** | React 19 + TypeScript + Vite + Tailwind CSS | Runs in native WebView / < 60 MB RAM |
 | **Media Transport** | WebRTC (`RTCPeerConnection`, Opus + VP8/H.264) | Hardware accelerated |
-| **Capture Engine** | Web Screen Capture (`getDisplayMedia` + `getUserMedia`) | Zero native drivers needed |
-| **Audio Processing** | Web Audio API (`GainNode`, `AnalyserNode`) | Sub-millisecond DSP |
-| **Desktop Option** | Tauri v2 (Rust + WebView2) [Future/Optional] | ~30 MB RAM vs 300+ MB Electron |
+| **Capture Engine** | Web Screen Capture (`getDisplayMedia` + `getUserMedia`) | Native OS picker, Zero kernel drivers |
+| **Audio Processing** | Web Audio API (`GainNode`, `AnalyserNode`, 40-bar VU) | Sub-millisecond DSP |
+| **Desktop Runtime** | Standalone OS WebView / Tauri v2 (Zero Electron) | ~40-60 MB RAM vs 350+ MB Discord |

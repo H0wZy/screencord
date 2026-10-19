@@ -8,6 +8,7 @@ import {
   ScreenShare,
   PhoneOff,
   Activity,
+  Settings,
 } from 'lucide-react';
 import { Participant } from '../types.js';
 
@@ -20,6 +21,7 @@ interface ControlBarProps {
   onRequestScreenShare: () => void;
   onStopScreenShare: () => void;
   onDisconnect: () => void;
+  onOpenSettings: () => void;
 }
 
 export const ControlBar: React.FC<ControlBarProps> = ({
@@ -31,10 +33,11 @@ export const ControlBar: React.FC<ControlBarProps> = ({
   onRequestScreenShare,
   onStopScreenShare,
   onDisconnect,
+  onOpenSettings,
 }) => {
   return (
     <div className="h-20 bg-[#1e1f22] border-t border-[#232428] px-6 flex items-center justify-between shrink-0 shadow-xl">
-      {/* Left: User Profile Pill */}
+      {/* Left: User Profile Pill with Quick Settings Gear */}
       <div className="flex items-center gap-3 bg-[#232428] py-2 px-3.5 rounded-full border border-white/5">
         <div className="relative">
           <div className="w-9 h-9 rounded-full bg-[#5865f2] flex items-center justify-center font-bold text-white text-sm uppercase shadow">
@@ -53,6 +56,13 @@ export const ControlBar: React.FC<ControlBarProps> = ({
             Voice Connected
           </span>
         </div>
+        <button
+          onClick={onOpenSettings}
+          className="p-1.5 rounded-full text-[#949ba4] hover:text-white hover:bg-[#35373c] transition-colors ml-1"
+          title="Configurações de Usuário e Áudio"
+        >
+          <Settings size={18} />
+        </button>
       </div>
 
       {/* Center: Controls Buttons */}
@@ -65,7 +75,7 @@ export const ControlBar: React.FC<ControlBarProps> = ({
               ? 'bg-[#da373c] text-white hover:bg-[#c02e34]'
               : 'bg-[#2b2d31] text-[#dbdee1] hover:bg-[#35373c] hover:text-white'
           }`}
-          title={self.isMuted ? 'Unmute Microphone' : 'Mute Microphone'}
+          title={self.isMuted ? 'Desmutar Microfone' : 'Mutar Microfone'}
         >
           {self.isMuted ? <MicOff size={20} /> : <Mic size={20} />}
         </button>
@@ -78,7 +88,7 @@ export const ControlBar: React.FC<ControlBarProps> = ({
               ? 'bg-[#da373c] text-white hover:bg-[#c02e34]'
               : 'bg-[#2b2d31] text-[#dbdee1] hover:bg-[#35373c] hover:text-white'
           }`}
-          title={self.isDeafened ? 'Undeafen' : 'Deafen (Mute All Sound)'}
+          title={self.isDeafened ? 'Desativar ensurdecer' : 'Ensurdecer (Desativar todo áudio)'}
         >
           <Headphones size={20} />
         </button>
@@ -91,7 +101,7 @@ export const ControlBar: React.FC<ControlBarProps> = ({
               ? 'bg-[#23a55a] text-white hover:bg-[#1f924f]'
               : 'bg-[#2b2d31] text-[#dbdee1] hover:bg-[#35373c] hover:text-white'
           }`}
-          title={self.isCameraOn ? 'Turn Off Camera' : 'Turn On Camera'}
+          title={self.isCameraOn ? 'Desligar Câmera' : 'Ligar Câmera'}
         >
           {self.isCameraOn ? <Video size={20} /> : <VideoOff size={20} />}
         </button>
@@ -104,17 +114,26 @@ export const ControlBar: React.FC<ControlBarProps> = ({
               ? 'bg-[#23a55a] text-white hover:bg-[#1f924f] animate-pulse'
               : 'bg-[#5865f2] text-white hover:bg-[#4752c4]'
           }`}
-          title={isScreenSharing ? 'Stop Screen Share' : 'Share Screen / Game'}
+          title={isScreenSharing ? 'Parar Transmissão' : 'Compartilhar Tela / Jogo'}
         >
           <ScreenShare size={20} />
-          <span>{isScreenSharing ? 'Stop Streaming' : 'Share Screen'}</span>
+          <span>{isScreenSharing ? 'Parar Tela' : 'Compartilhar Tela'}</span>
+        </button>
+
+        {/* Settings Gear Button */}
+        <button
+          onClick={onOpenSettings}
+          className="p-3.5 rounded-full bg-[#2b2d31] text-[#dbdee1] hover:bg-[#35373c] hover:text-white transition-all duration-150 active:scale-95 shadow-md"
+          title="Configurações de Voz, Microfone e Áudio"
+        >
+          <Settings size={20} />
         </button>
 
         {/* Disconnect */}
         <button
           onClick={onDisconnect}
           className="p-3.5 rounded-full bg-[#da373c] hover:bg-[#c02e34] text-white transition-all duration-150 active:scale-95 shadow-md ml-2"
-          title="Disconnect from Room"
+          title="Desconectar da Chamada"
         >
           <PhoneOff size={20} />
         </button>
@@ -123,7 +142,7 @@ export const ControlBar: React.FC<ControlBarProps> = ({
       {/* Right: Low Latency Indicator */}
       <div className="flex items-center gap-2 text-xs text-[#949ba4] font-medium bg-[#232428] px-3.5 py-2 rounded-full border border-white/5">
         <Activity size={16} className="text-[#57f287]" />
-        <span>RTC Low-Latency</span>
+        <span>RTC Ultra-Lite</span>
         <span className="text-[#57f287] font-mono">60 FPS</span>
       </div>
     </div>
