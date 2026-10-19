@@ -8,6 +8,7 @@
     "dev:server": "npm --prefix server run dev",
     "dev:client": "npm --prefix client run dev",
     "desktop": "npm run build && node scripts/launch-desktop.mjs",
+    "test": "node --test tests/**/*.test.mjs",
     "build": "npm --prefix server run build && npm --prefix client run build",
     "start": "npm --prefix server run start",
     "install:all": "npm install && npm --prefix server install && npm --prefix client install"
