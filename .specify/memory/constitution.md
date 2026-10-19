@@ -1,16 +1,11 @@
 <!-- Sync Impact Report
-Version change: 0.0.0 (template) → 1.0.0
+Version change: 1.0.0 → 1.1.0
 List of modified principles:
-- [PRINCIPLE_1_NAME] → I. Self-Hosted & Localhost-First (Zero Lock-in)
-- [PRINCIPLE_2_NAME] → II. Screen-First Real-Time Media Architecture
-- [PRINCIPLE_3_NAME] → III. Standards-Compliant WebRTC & Clean Signaling
-- [PRINCIPLE_4_NAME] → IV. Modularity & Platform Portability
-- [PRINCIPLE_5_NAME] → V. Privacy, Zero-Telemetry & Simplicity
+- IV. Modularity & Platform Portability (removed references to Electron, affirmed lightweight web/webview runtime architecture)
 Added sections:
-- System & Media Architecture Standards
-- Quality Gates & Testing Workflow
+- VI. Ultra-Lightweight & Gamer-Optimized (Zero-Electron Policy)
 Removed sections:
-- None (template placeholders replaced with concrete project governance)
+- None
 Follow-up TODOs:
 - None
 -->
@@ -33,10 +28,13 @@ The codebase MUST enforce a strict separation of concerns across three layers:
 1. Media Capture & WebRTC Transport Engine.
 2. Real-time Signaling & Room Orchestration Server.
 3. User Interface & Call Experience Layer.
-This modularity ensures the application runs seamlessly in modern browsers and can be wrapped or enhanced with desktop native runtimes (e.g., Electron) without rewriting core logic.
+This modularity ensures the application runs seamlessly in modern browsers and can be wrapped or enhanced with ultra-lightweight desktop native webview runtimes (e.g., Tauri / OS webview) without rewriting core logic.
 
 ### V. Privacy, Zero-Telemetry & Simplicity
 Screencord MUST NOT collect, store, or transmit telemetry, user metrics, or behavioral analytics to any remote third party. All audio, video, and screen data MUST flow exclusively between call peers or through the self-hosted relay. Complexity MUST be justified; simple and robust architectures take precedence over unnecessary abstraction.
+
+### VI. Ultra-Lightweight & Gamer-Optimized (Zero-Electron Policy)
+Screencord MUST strictly reject Electron and similarly bloated runtimes that bundle heavy multi-process Chromium installations (>200 MB disk, >300 MB RAM idle). The project MUST maintain an ultra-low resource profile (<100 MB RAM idle, <1% CPU idle), ensuring that gamers can play demanding competitive titles while streaming screens and voice without frame drops, micro-stutters, or performance penalties.
 
 ## System & Media Architecture Standards
 
@@ -47,8 +45,8 @@ Screencord MUST NOT collect, store, or transmit telemetry, user metrics, or beha
    - Users MUST be able to select specific monitors or specific open windows.
    - Screen streams MUST support dynamic resolution and frame rate adjustments (up to 1080p 60fps where supported by hardware and network).
 3. **Deployment & Runtime Guarantees**:
-   - Node.js runtime environment for the signaling server with minimal dependencies.
-   - Responsive web client supporting modern WebRTC and Screen Capture APIs (`getDisplayMedia`, `getUserMedia`).
+   - Ultra-lightweight signaling server with minimal dependencies.
+   - Zero-bloat responsive web client using native WebRTC and Screen Capture APIs (`getDisplayMedia`, `getUserMedia`), optional lightweight desktop wrapper via Tauri/native webview.
 
 ## Quality Gates & Testing Workflow
 
@@ -67,4 +65,4 @@ This Constitution represents the supreme architectural and development authority
 - **MINOR (1.X.0)**: Addition of new principles, architectural standards, or governance rules.
 - **PATCH (1.0.X)**: Non-semantic clarifications, wording improvements, or typo fixes.
 
-**Version**: 1.0.0 | **Ratified**: 2026-10-19 | **Last Amended**: 2026-10-19
+**Version**: 1.1.0 | **Ratified**: 2026-10-19 | **Last Amended**: 2026-10-19

@@ -1,4 +1,4 @@
-# Feature Specification: Self-Hosted Voice & Screen Sharing Calls
+# Feature Specification: Self-Hosted Voice & Screen Sharing Calls (Ultra-Lightweight / Zero-Electron)
 
 **Feature Branch**: `001-screen-sharing-call`
 
@@ -6,17 +6,17 @@
 
 **Status**: Ready for Planning
 
-**Input**: User description: "Discord self-hosted alternative with full screen, window, monitor, application audio, global PC audio, camera, and voice sharing in calls for friends on localhost."
+**Input**: User description: "Discord self-hosted alternative with full screen, window, monitor, application audio, global PC audio, camera, and voice sharing in calls for friends on localhost, with an ultra-lightweight architecture (strictly no Electron / low RAM and CPU usage for gamers)."
 
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Full-Screen Monitor Sharing with System Audio (Priority: P1)
 
-As a call participant, I want to share my entire computer screen along with my global computer audio to everyone in the voice channel, so that my friends can watch gameplay, videos, or presentations with high fidelity and synchronized sound.
+As a gaming call participant, I want to share my entire computer screen along with my global computer audio to everyone in the voice channel, so that my friends can watch gameplay, videos, or presentations with high fidelity and synchronized sound without degrading my game's FPS.
 
-**Why this priority**: Screen and desktop audio sharing is the core value proposition of Screencord. Delivering this independently allows users to immediately start hosting screen-sharing sessions with friends on localhost.
+**Why this priority**: Screen and desktop audio sharing is the core value proposition of Screencord. Delivering this with minimal resource overhead allows users to immediately start hosting gameplay and screen-sharing sessions with friends on localhost.
 
-**Independent Test**: Two users join a localhost call room; User A clicks "Share Screen", selects Monitor 1 with system audio enabled; User B instantly sees User A's screen at 30-60 FPS and hears User A's computer audio in real time.
+**Independent Test**: Two users join a localhost call room; User A clicks "Share Screen", selects Monitor 1 with system audio enabled; User B instantly sees User A's screen at 30-60 FPS and hears User A's computer audio in real time, while User A's CPU usage remains negligible.
 
 **Acceptance Scenarios**:
 
@@ -27,9 +27,9 @@ As a call participant, I want to share my entire computer screen along with my g
 
 ### User Story 2 - Specific Application Window Sharing with Window Audio (Priority: P2)
 
-As a presenter, I want to share only a specific application or browser window and capture its dedicated audio without exposing the rest of my desktop, personal notifications, or other background tasks.
+As a presenter playing a game, I want to share only that specific game or application window and capture its dedicated audio without exposing the rest of my desktop, personal notifications, or background tasks.
 
-**Why this priority**: Window sharing protects presenter privacy and reduces bandwidth usage when users only want to stream a specific game or single tool.
+**Why this priority**: Window sharing protects presenter privacy and saves system rendering bandwidth when users only want to stream a specific game or single tool.
 
 **Independent Test**: User opens a game or media player alongside personal chat windows; User initiates stream selecting only that media player window; remote viewers see only that window even when the presenter switches tabs or windows on their own PC.
 
@@ -92,6 +92,7 @@ As a viewer in a call with multiple streams (e.g., one screen share and three we
 - **FR-009**: System MUST allow viewers to expand any active screen share to theater view or browser full-screen.
 - **FR-010**: System MUST allow viewers to independently adjust the local volume of each participant and each stream.
 - **FR-011**: System MUST operate completely self-hosted without requiring cloud authentication, external STUN/TURN subscriptions on local networks, or third-party tracking.
+- **FR-012**: System MUST maintain an ultra-lightweight client footprint and MUST NOT require or rely on the Electron framework or bundled multi-hundred-megabyte Chromium binaries, ensuring zero performance drops or RAM bloat for gaming.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -108,9 +109,11 @@ As a viewer in a call with multiple streams (e.g., one screen share and three we
 - **SC-003**: Audio and video sync drift during screen sharing remains under 50 milliseconds across a 30-minute session.
 - **SC-004**: System supports at least 8 simultaneous voice/video/screen participants in a single room on modest local hardware without stream dropouts.
 - **SC-005**: 100% of core calling, screen sharing, and audio capture features operate without any external internet connection (true offline / local-network capability).
+- **SC-006**: Client idle memory footprint remains under 100 MB RAM and idle CPU remains under 1%, allowing competitive games to maintain maximum frame rates without stuttering or micro-freezes.
+- **SC-007**: Packaged client distribution / web bundle size remains under 15 MB (unlike Discord's >220 MB binary overhead).
 
 ## Assumptions
 
-- Users run Screencord on modern Chromium-based or standards-compliant browsers (or packaged desktop environment) that provide Screen Capture and Audio APIs.
+- Users run Screencord on modern web browsers or ultra-lightweight native webview runtimes (e.g., Tauri), delivering maximum FPS with minimum resource consumption. Electron is strictly excluded.
 - For localhost and private LAN calls, direct WebRTC peer connections or local relay provide sufficient throughput without requiring external NAT traversal.
 - Mobile browser viewing is secondary for v1; primary focus is desktop streaming experience (Windows/macOS/Linux).
