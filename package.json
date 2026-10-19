@@ -7,8 +7,10 @@
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "npm --prefix server run dev",
     "dev:client": "npm --prefix client run dev",
-    "desktop": "npm run build && node scripts/launch-desktop.mjs",
-    "test": "node --test tests/**/*.test.mjs",
+    "desktop": "npm run build && python desktop/screencord_app.py",
+    "desktop:web": "npm run build && node scripts/launch-desktop.mjs",
+    "build:desktop": "pyinstaller --noconfirm --onedir --windowed --name Screencord desktop/screencord_app.py",
+    "test": "node --test tests/**/*.test.mjs && pytest tests/",
     "build": "npm --prefix server run build && npm --prefix client run build",
     "start": "npm --prefix server run start",
     "install:all": "npm install && npm --prefix server install && npm --prefix client install"

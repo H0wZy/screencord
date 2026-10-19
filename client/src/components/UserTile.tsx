@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MicOff, Headphones, Volume2 } from 'lucide-react';
+import { MicOff, Headphones, Volume2, CameraOff } from 'lucide-react';
 import { Participant } from '../types.js';
 import { VolumeSlider } from './VolumeSlider.js';
 
@@ -9,6 +9,7 @@ interface UserTileProps {
   videoTrack?: MediaStreamTrack | null;
   volume?: number;
   onVolumeChange?: (volume: number) => void;
+  onTurnOffCamera?: () => void;
 }
 
 export const UserTile: React.FC<UserTileProps> = ({
@@ -17,6 +18,7 @@ export const UserTile: React.FC<UserTileProps> = ({
   videoTrack = null,
   volume = 1.0,
   onVolumeChange,
+  onTurnOffCamera,
 }) => {
   const [showVolume, setShowVolume] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -31,7 +33,6 @@ export const UserTile: React.FC<UserTileProps> = ({
     }
   }, [videoTrack]);
 
-  // Generate deterministic avatar color based on nickname
   const getAvatarColor = (name: string) => {
     const colors = ['bg-[#5865f2]', 'bg-[#57f287]', 'bg-[#fee75c]', 'bg-[#eb459e]', 'bg-[#ed4245]'];
     let hash = 0;
@@ -41,76 +42,124 @@ export const UserTile: React.FC<UserTileProps> = ({
     return colors[Math.abs(hash) % colors.length];
   };
 
-  return (
-    <div
-      className={`relative group flex flex-col items-center justify-center bg-[#2b2d31] rounded-lg overflow-hidden transition-all duration-200 aspect-video min-w-[220px] max-w-sm w-full border-2 ${
-        participant.isSpeaking ? 'border-[#23a55a] speaking-ring' : 'border-transparent'
-      }`}
-    >
-      {/* Video stream if camera is on */}
-      {participant.isCameraOn && videoTrack ? (
+  const hasVideo = participant.isCameraOn && videoTrack;
+
+  // 1. Camera Video Tile (16:9 side-by-side card like Image 4)
+  if (hasVideo) {
+    return (
+      <div
+        className={`relative group bg-black rounded-2xl overflow-hidden border border-white/10 shadow-xl aspect-video w-full max-h-[50vh] flex items-center justify-center ${
+          participant.isSpeaking ? 'ring-2 ring-[#23a55a]' : ''
+        }`}
+      >
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted={isSelf}
-          className="w-full h-full object-cover rounded-md"
+          className="w-full h-full aspect-video object-contain"
         />
-      ) : (
-        /* Avatar when camera is off */
-        <div className="flex flex-col items-center gap-2">
-          <div
-            className={`w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold uppercase shadow-md ${getAvatarColor(
-              participant.nickname
-            )}`}
-          >
-            {participant.nickname.slice(0, 2)}
-          </div>
-        </div>
-      )}
 
-      {/* Top Left: Badges */}
-      <div className="absolute top-2 left-2 flex items-center gap-1.5">
+        {/* Bottom Left: Participant Name & Status */}
+        <div className="absolute bottom-3 left-3 flex items-center gap-2 bg-[#1e1f22]/85 backdrop-blur-md px-3 py-1.5 rounded-lg text-xs font-semibold text-white border border-white/5">
+          <span>{participant.nickname}</span>
+          {isSelf && <span className="text-[#949ba4] font-normal text-[11px]">(Você)</span>}
+          {participant.isMuted && <MicOff size={14} className="text-[#da373c] ml-1" />}
+          {participant.isDeafened && <Headphones size={14} className="text-[#da373c] ml-1" />}
+        </div>
+
+        {/* Hover Controls: Turn Off Camera (if self) or Volume (if remote) */}
+        <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          {isSelf && onTurnOffCamera && (
+            <button
+              onClick={onTurnOffCamera}
+              className="flex items-center gap-1.5 bg-[#1e1f22]/90 hover:bg-[#35373c] text-white px-3 py-1.5 rounded-lg text-xs font-medium border border-white/5 shadow-md transition-colors"
+            >
+              <CameraOff size={14} />
+              <span>Desligar Câmera</span>
+            </button>
+          )}
+
+          {!isSelf && onVolumeChange && (
+            <div className="relative">
+              <button
+                onClick={() => setShowVolume(!showVolume)}
+                className="bg-[#1e1f22]/90 hover:bg-[#35373c] p-2 rounded-lg text-[#dbdee1] transition-colors border border-white/5"
+                title="Ajustar Volume"
+              >
+                <Volume2 size={16} />
+              </button>
+              {showVolume && (
+                <div className="absolute right-0 top-10 z-50">
+                  <VolumeSlider
+                    label={`Volume de ${participant.nickname}`}
+                    volume={volume}
+                    onChange={onVolumeChange}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Avatar Tile for Voice-only (Image 3)
+  return (
+    <div className="flex flex-col items-center gap-2.5 p-3 rounded-2xl hover:bg-white/5 transition-colors group">
+      <div className="relative">
+        <div
+          className={`w-20 h-20 rounded-full flex items-center justify-center text-white text-2xl font-bold uppercase shadow-xl transition-all duration-200 ${getAvatarColor(
+            participant.nickname
+          )} ${
+            participant.isSpeaking
+              ? 'ring-4 ring-[#23a55a] shadow-[0_0_20px_rgba(35,165,90,0.6)] scale-105'
+              : 'ring-2 ring-white/10'
+          }`}
+        >
+          {participant.nickname.slice(0, 2)}
+        </div>
+
+        {/* Muted / Deafened Badge */}
         {participant.isMuted && (
-          <div className="bg-[#1e1f22]/90 p-1.5 rounded-full text-[#da373c]" title="Muted">
-            <MicOff size={14} />
+          <div className="absolute bottom-0 right-0 bg-[#da373c] text-white p-1 rounded-full border-2 border-[#1e1f22] shadow">
+            <MicOff size={13} />
           </div>
         )}
         {participant.isDeafened && (
-          <div className="bg-[#1e1f22]/90 p-1.5 rounded-full text-[#da373c]" title="Deafened">
-            <Headphones size={14} />
+          <div className="absolute bottom-0 right-0 bg-[#da373c] text-white p-1 rounded-full border-2 border-[#1e1f22] shadow">
+            <Headphones size={13} />
           </div>
         )}
       </div>
 
-      {/* Top Right: Volume Settings for Remote Peers */}
-      {!isSelf && onVolumeChange && (
-        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <div className="relative">
+      <div className="flex items-center gap-1.5">
+        <span className="text-sm font-semibold text-white max-w-[120px] truncate">
+          {participant.nickname}
+        </span>
+        {isSelf && <span className="text-[11px] text-[#949ba4]">(Você)</span>}
+
+        {!isSelf && onVolumeChange && (
+          <div className="relative opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               onClick={() => setShowVolume(!showVolume)}
-              className="bg-[#1e1f22]/90 hover:bg-[#35373c] p-1.5 rounded-full text-[#dbdee1] transition-colors"
-              title="Adjust Volume"
+              className="text-[#949ba4] hover:text-white p-1"
+              title="Ajustar Volume"
             >
               <Volume2 size={14} />
             </button>
             {showVolume && (
-              <div className="absolute right-0 top-8 z-50">
+              <div className="absolute left-1/2 -translate-x-1/2 top-7 z-50">
                 <VolumeSlider
-                  label={`${participant.nickname}'s Voice`}
+                  label={`Volume de ${participant.nickname}`}
                   volume={volume}
                   onChange={onVolumeChange}
                 />
               </div>
             )}
           </div>
-        </div>
-      )}
-
-      {/* Bottom overlay: Participant Name */}
-      <div className="absolute bottom-2 left-2 flex items-center gap-1.5 bg-[#1e1f22]/80 backdrop-blur-xs px-2.5 py-1 rounded text-xs font-medium text-white">
-        <span>{participant.nickname}</span>
-        {isSelf && <span className="text-[#949ba4] text-[10px]">(You)</span>}
+        )}
       </div>
     </div>
   );

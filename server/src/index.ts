@@ -1,10 +1,12 @@
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { WebSocketServer, WebSocket } from 'ws';
 import { RoomManager } from './rooms.js';
-import { ClientMessage, ServerMessage } from './types.js';
+import { ClientMessage, ServerMessage, ChatMessage } from './types.js';
+import { getNetworkAddresses } from './network.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -38,6 +40,12 @@ const server = http.createServer((req, res) => {
   if (req.url === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ status: 'ok', service: 'screencord-signaling', port: PORT }));
+    return;
+  }
+
+  if (req.url === '/network-info') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(getNetworkAddresses(PORT)));
     return;
   }
 
@@ -185,6 +193,28 @@ wss.on('connection', (ws: WebSocket) => {
           }
           break;
         }
+
+        case 'send-chat': {
+          const session = roomManager.getSession(ws);
+          if (session && data.payload?.text?.trim()) {
+            const participant = roomManager.getParticipant(session.roomId, session.peerId);
+            const chatMsg: ChatMessage = {
+              id: crypto.randomUUID(),
+              senderId: session.peerId,
+              nickname: participant?.nickname || 'Gamer',
+              text: data.payload.text.trim(),
+              timestamp: Date.now(),
+            };
+            const peers = roomManager.getRoomPeers(session.roomId);
+            for (const p of peers) {
+              sendMessage(p.socket, {
+                type: 'chat-message',
+                payload: chatMsg,
+              });
+            }
+          }
+          break;
+        }
       }
     } catch (err) {
       console.error('Error handling WebSocket message:', err);
@@ -206,5 +236,14 @@ wss.on('connection', (ws: WebSocket) => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Screencord Signaling Server running at http://localhost:${PORT} (WS on /ws)`);
+  const net = getNetworkAddresses(PORT);
+  console.log(`🚀 Screencord Signaling Server running at:`);
+  console.log(`   - Localhost:       ${net.localhost}`);
+  for (const lan of net.lan) {
+    console.log(`   - Local Wi-Fi/LAN: ${lan}`);
+  }
+  for (const vpn of net.vpn) {
+    console.log(`   - VPN (${vpn.type}):      ${vpn.url} (${vpn.iface})`);
+  }
+  console.log(`   (WebSocket endpoint: /ws)\n`);
 });

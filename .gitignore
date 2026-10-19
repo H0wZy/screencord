@@ -33,3 +33,6 @@ Thumbs.db
 
 # Testing / Coverage
 coverage/
+.pytest_cache/
+__pycache__/
+*.pyc

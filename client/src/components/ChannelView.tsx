@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Participant, RemoteStream, ServerMessage } from '../types.js';
+import { Participant, RemoteStream, ServerMessage, ChatMessage } from '../types.js';
 import { SignalingClient } from '../webrtc/signalingClient.js';
 import { PeerManager } from '../webrtc/peerManager.js';
 import { MediaCaptureService } from '../webrtc/mediaCapture.js';
@@ -10,6 +10,8 @@ import { StreamGrid } from './StreamGrid.js';
 import { ControlBar } from './ControlBar.js';
 import { ScreenPickerModal } from './ScreenPickerModal.js';
 import { SettingsModal } from './SettingsModal.js';
+import { InviteModal } from './InviteModal.js';
+import { ChannelChat } from './ChannelChat.js';
 
 interface ChannelViewProps {
   roomId: string;
@@ -39,8 +41,18 @@ export const ChannelView: React.FC<ChannelViewProps> = ({
   const [localUserStream, setLocalUserStream] = useState<MediaStream | null>(null);
   const [localScreenStream, setLocalScreenStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<RemoteStream[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      id: 'init-call',
+      senderId: 'system',
+      nickname: 'Screencord',
+      text: `Chamada de voz e tela iniciada em #${roomId}. Convide amigos pelo botão "Conectar Amigos" acima!`,
+      timestamp: Date.now(),
+    },
+  ]);
   const [isScreenModalOpen, setIsScreenModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [isTheater, setIsTheater] = useState(false);
   const [, setMixerVersion] = useState(0);
 
@@ -76,7 +88,7 @@ export const ChannelView: React.FC<ChannelViewProps> = ({
     // 4. Handle incoming remote tracks
     peerManager.onRemoteTrack = ({ peerId, track, stream, isScreen }) => {
       console.log(`[ChannelView] Remote track from ${peerId}, kind=${track.kind}, isScreen=${isScreen}`);
-      
+
       if (track.kind === 'audio') {
         audioMixer.attachAudioTrack(peerId, track, isScreen ? 'screen' : 'voice');
       }
@@ -132,13 +144,36 @@ export const ChannelView: React.FC<ChannelViewProps> = ({
             if (prev.some((p) => p.id === msg.payload.id)) return prev;
             return [...prev, msg.payload];
           });
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `join-${Date.now()}`,
+              senderId: 'system',
+              nickname: 'Screencord',
+              text: `${msg.payload.nickname} entrou na chamada.`,
+              timestamp: Date.now(),
+            },
+          ]);
           break;
         }
 
         case 'user-left': {
+          const leavingPeer = participants.find((p) => p.id === msg.payload.peerId);
           peerManager.closePeer(msg.payload.peerId);
           setParticipants((prev) => prev.filter((p) => p.id !== msg.payload.peerId));
           setRemoteStreams((prev) => prev.filter((s) => s.peerId !== msg.payload.peerId));
+          if (leavingPeer) {
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: `leave-${Date.now()}`,
+                senderId: 'system',
+                nickname: 'Screencord',
+                text: `${leavingPeer.nickname} saiu da chamada.`,
+                timestamp: Date.now(),
+              },
+            ]);
+          }
           break;
         }
 
@@ -161,6 +196,11 @@ export const ChannelView: React.FC<ChannelViewProps> = ({
           setParticipants((prev) =>
             prev.map((p) => (p.id === msg.payload.peerId ? { ...p, ...msg.payload.state } : p))
           );
+          break;
+        }
+
+        case 'chat-message': {
+          setMessages((prev) => [...prev, msg.payload]);
           break;
         }
       }
@@ -300,8 +340,11 @@ export const ChannelView: React.FC<ChannelViewProps> = ({
   const handleUpdateNickname = (newNickname: string) => {
     setSelf((prev) => ({ ...prev, nickname: newNickname }));
     localStorage.setItem('screencord_nick', newNickname);
-    // Notify room peers
     signalingRef.current?.updateState({});
+  };
+
+  const handleSendMessage = (text: string) => {
+    signalingRef.current?.sendChat(text);
   };
 
   const handleUpdateAudioSettings = async (settings: {
@@ -312,7 +355,6 @@ export const ChannelView: React.FC<ChannelViewProps> = ({
     profile: 'isolation' | 'studio' | 'custom';
     autoSensitivity: boolean;
   }) => {
-    console.log('[ChannelView] Applying audio settings:', settings);
     try {
       const constraints: MediaTrackConstraints = {
         deviceId: settings.inputDeviceId && settings.inputDeviceId !== 'default'
@@ -342,34 +384,56 @@ export const ChannelView: React.FC<ChannelViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#1e1f22]">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#313338]">
       {/* Top Room Header */}
-      <RoomHeader roomId={roomId} participantCount={participants.length + 1} />
-
-      {/* Main Content Area: Streams & Video Grid */}
-      <StreamGrid
-        self={self}
-        participants={participants}
-        localScreenStream={localScreenStream}
-        localUserStream={localUserStream}
-        remoteStreams={remoteStreams}
-        isTheater={isTheater}
-        onToggleTheater={() => setIsTheater(!isTheater)}
-        getVolume={getVolume}
-        onSetVolume={handleSetVolume}
+      <RoomHeader
+        roomId={roomId}
+        participantCount={participants.length + 1}
+        onOpenInvite={() => setIsInviteOpen(true)}
       />
 
-      {/* Bottom Control Bar */}
-      <ControlBar
-        self={self}
-        isScreenSharing={self.isScreenSharing}
-        onToggleMic={handleToggleMic}
-        onToggleDeafen={handleToggleDeafen}
-        onToggleCamera={handleToggleCamera}
-        onRequestScreenShare={() => setIsScreenModalOpen(true)}
-        onStopScreenShare={handleStopScreenShare}
-        onDisconnect={onLeaveRoom}
-        onOpenSettings={() => setIsSettingsOpen(true)}
+      {/* Main Call Stage: Avatars (Voice-only) or 16:9 Video Grid */}
+      <div className="bg-[#1e1f22] border-b border-[#232428] shrink-0 flex flex-col items-center justify-center">
+        <StreamGrid
+          self={self}
+          participants={participants}
+          localScreenStream={localScreenStream}
+          localUserStream={localUserStream}
+          remoteStreams={remoteStreams}
+          isTheater={isTheater}
+          onToggleTheater={() => setIsTheater(!isTheater)}
+          getVolume={getVolume}
+          onSetVolume={handleSetVolume}
+          onTurnOffCamera={handleToggleCamera}
+        />
+
+        {/* Floating Call Controls (Below video stage, never obscuring video!) */}
+        <ControlBar
+          self={self}
+          isScreenSharing={self.isScreenSharing}
+          onToggleMic={handleToggleMic}
+          onToggleDeafen={handleToggleDeafen}
+          onToggleCamera={handleToggleCamera}
+          onRequestScreenShare={() => setIsScreenModalOpen(true)}
+          onStopScreenShare={handleStopScreenShare}
+          onDisconnect={onLeaveRoom}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+        />
+      </div>
+
+      {/* Bottom Half: Discord Channel Text Chat */}
+      <ChannelChat
+        roomId={roomId}
+        messages={messages}
+        onSendMessage={handleSendMessage}
+        selfId={self.id}
+      />
+
+      {/* Invite Friends Modal */}
+      <InviteModal
+        isOpen={isInviteOpen}
+        onClose={() => setIsInviteOpen(false)}
+        roomId={roomId}
       />
 
       {/* Screen Selection Modal */}
@@ -379,7 +443,7 @@ export const ChannelView: React.FC<ChannelViewProps> = ({
         onSelectSource={handleStartScreenShare}
       />
 
-      {/* Discord-style Voice & Audio Settings Modal */}
+      {/* Voice & Audio Settings Modal */}
       <SettingsModal
         isOpen={isSettingsOpen}
         self={self}

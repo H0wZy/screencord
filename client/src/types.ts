@@ -37,7 +37,16 @@ export type ClientMessage =
           | 'isSpeaking'
         >
       >;
-    };
+    }
+  | { type: 'send-chat'; payload: { text: string } };
+
+export interface ChatMessage {
+  id: string;
+  senderId: string;
+  nickname: string;
+  text: string;
+  timestamp: number;
+}
 
 export type ServerMessage =
   | {
@@ -70,4 +79,5 @@ export type ServerMessage =
           >
         >;
       };
-    };
+    }
+  | { type: 'chat-message'; payload: ChatMessage };

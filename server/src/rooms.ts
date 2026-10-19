@@ -86,6 +86,10 @@ export class RoomManager {
     return this.socketToSession.get(socket);
   }
 
+  getParticipant(roomId: string, peerId: string): Participant | undefined {
+    return this.rooms.get(roomId)?.participants.get(peerId);
+  }
+
   getSocketByPeerId(peerId: string): WebSocket | undefined {
     return this.peerToSocket.get(peerId);
   }

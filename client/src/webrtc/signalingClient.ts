@@ -113,6 +113,10 @@ export class SignalingClient {
     this.send({ type: 'state-update', payload: state });
   }
 
+  sendChat(text: string) {
+    this.send({ type: 'send-chat', payload: { text } });
+  }
+
   disconnect() {
     this.isExplicitlyClosed = true;
     if (this.reconnectTimer) {
