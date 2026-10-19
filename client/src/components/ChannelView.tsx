@@ -12,6 +12,8 @@ import { ScreenPickerModal } from './ScreenPickerModal.js';
 import { SettingsModal } from './SettingsModal.js';
 import { InviteModal } from './InviteModal.js';
 import { ChannelChat } from './ChannelChat.js';
+import { enumerateMediaDevices } from '../services/deviceService.js';
+import { loadShortcuts, matchesShortcut, shouldIgnoreKeyEvent } from '../services/shortcutManager.js';
 
 interface ChannelViewProps {
   roomId: string;
@@ -50,8 +52,24 @@ export const ChannelView: React.FC<ChannelViewProps> = ({
       timestamp: Date.now(),
     },
   ]);
+
+  // Audio and Video Devices
+  const [audioInputs, setAudioInputs] = useState<MediaDeviceInfo[]>([]);
+  const [audioOutputs, setAudioOutputs] = useState<MediaDeviceInfo[]>([]);
+  const [videoInputs, setVideoInputs] = useState<MediaDeviceInfo[]>([]);
+  const [selectedInputId, setSelectedInputId] = useState<string>('default');
+  const [selectedOutputId, setSelectedOutputId] = useState<string>('default');
+  const [selectedVideoId, setSelectedVideoId] = useState<string>('default');
+
+  // Audio Volumes & Profiles
+  const [inputVolume, setInputVolume] = useState<number>(100);
+  const [outputVolume, setOutputVolume] = useState<number>(100);
+  const [inputProfile, setInputProfile] = useState<'isolation' | 'studio' | 'custom'>('custom');
+
+  // Modals & Navigation
   const [isScreenModalOpen, setIsScreenModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<string>('voice');
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [isTheater, setIsTheater] = useState(false);
   const [, setMixerVersion] = useState(0);
@@ -61,6 +79,33 @@ export const ChannelView: React.FC<ChannelViewProps> = ({
   const audioDetectorRef = useRef<AudioDetector | null>(null);
   const audioMixerRef = useRef<AudioMixer | null>(null);
 
+  // Load and refresh devices
+  const refreshDevices = async () => {
+    const res = await enumerateMediaDevices();
+    setAudioInputs(res.audioInputs);
+    setAudioOutputs(res.audioOutputs);
+    setVideoInputs(res.videoInputs);
+
+    if (res.audioInputs.length > 0 && selectedInputId === 'default') {
+      setSelectedInputId(res.audioInputs[0].deviceId);
+    }
+    if (res.audioOutputs.length > 0 && selectedOutputId === 'default') {
+      setSelectedOutputId(res.audioOutputs[0].deviceId);
+    }
+    if (res.videoInputs.length > 0 && selectedVideoId === 'default') {
+      setSelectedVideoId(res.videoInputs[0].deviceId);
+    }
+  };
+
+  useEffect(() => {
+    refreshDevices();
+    if (navigator.mediaDevices?.addEventListener) {
+      navigator.mediaDevices.addEventListener('devicechange', refreshDevices);
+      return () => navigator.mediaDevices.removeEventListener('devicechange', refreshDevices);
+    }
+  }, []);
+
+  // WebRTC & Signaling Setup
   useEffect(() => {
     // 1. Initialize Audio Mixer
     const audioMixer = new AudioMixer();
@@ -87,8 +132,6 @@ export const ChannelView: React.FC<ChannelViewProps> = ({
 
     // 4. Handle incoming remote tracks
     peerManager.onRemoteTrack = ({ peerId, track, stream, isScreen }) => {
-      console.log(`[ChannelView] Remote track from ${peerId}, kind=${track.kind}, isScreen=${isScreen}`);
-
       if (track.kind === 'audio') {
         audioMixer.attachAudioTrack(peerId, track, isScreen ? 'screen' : 'voice');
       }
@@ -132,7 +175,6 @@ export const ChannelView: React.FC<ChannelViewProps> = ({
           peerManager.setSelfId(msg.payload.selfId);
           setParticipants(msg.payload.existingParticipants);
 
-          // Initiate WebRTC call with existing peers in the room
           for (const peer of msg.payload.existingParticipants) {
             peerManager.initiateCall(peer.id);
           }
@@ -206,7 +248,7 @@ export const ChannelView: React.FC<ChannelViewProps> = ({
       }
     });
 
-    // 6. Request microphone permission by default on join
+    // 6. Request microphone permission on join
     MediaCaptureService.captureUserMedia({ audio: true, video: false })
       .then((stream) => {
         setLocalUserStream(stream);
@@ -229,6 +271,35 @@ export const ChannelView: React.FC<ChannelViewProps> = ({
       MediaCaptureService.stopStream(localScreenStream);
     };
   }, [roomId, initialNickname]);
+
+  // Global Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (shouldIgnoreKeyEvent(e)) return;
+      const shortcuts = loadShortcuts();
+
+      if (matchesShortcut(e, shortcuts.toggleMute)) {
+        e.preventDefault();
+        handleToggleMic();
+      } else if (matchesShortcut(e, shortcuts.toggleDeafen)) {
+        e.preventDefault();
+        handleToggleDeafen();
+      } else if (matchesShortcut(e, shortcuts.toggleCamera)) {
+        e.preventDefault();
+        handleToggleCamera();
+      } else if (matchesShortcut(e, shortcuts.toggleScreen)) {
+        e.preventDefault();
+        if (self.isScreenSharing) {
+          handleStopScreenShare();
+        } else {
+          setIsScreenModalOpen(true);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [self.isMuted, self.isDeafened, self.isCameraOn, self.isScreenSharing, localUserStream, localScreenStream]);
 
   // Toggle Microphone
   const handleToggleMic = () => {
@@ -264,7 +335,14 @@ export const ChannelView: React.FC<ChannelViewProps> = ({
       signalingRef.current?.updateState({ isCameraOn: false });
     } else {
       try {
-        const camStream = await MediaCaptureService.captureUserMedia({ video: true, audio: false });
+        const camConstraints: MediaStreamConstraints = {
+          video:
+            selectedVideoId && selectedVideoId !== 'default'
+              ? { deviceId: { exact: selectedVideoId } }
+              : true,
+          audio: false,
+        };
+        const camStream = await navigator.mediaDevices.getUserMedia(camConstraints);
         const videoTrack = camStream.getVideoTracks()[0];
         if (videoTrack && localUserStream) {
           localUserStream.addTrack(videoTrack);
@@ -276,6 +354,33 @@ export const ChannelView: React.FC<ChannelViewProps> = ({
         signalingRef.current?.updateState({ isCameraOn: true });
       } catch (err) {
         console.warn('Could not enable camera:', err);
+      }
+    }
+  };
+
+  // Switch Camera Device
+  const handleSelectCamera = async (deviceId: string) => {
+    setSelectedVideoId(deviceId);
+    if (self.isCameraOn && localUserStream) {
+      const oldVideo = localUserStream.getVideoTracks()[0];
+      if (oldVideo) {
+        oldVideo.stop();
+        localUserStream.removeTrack(oldVideo);
+      }
+      try {
+        const camStream = await navigator.mediaDevices.getUserMedia({
+          video: deviceId && deviceId !== 'default' ? { deviceId: { exact: deviceId } } : true,
+          audio: false,
+        });
+        const newTrack = camStream.getVideoTracks()[0];
+        if (newTrack) {
+          localUserStream.addTrack(newTrack);
+          const newStream = new MediaStream(localUserStream.getTracks());
+          setLocalUserStream(newStream);
+          peerManagerRef.current?.setLocalUserStream(newStream);
+        }
+      } catch (err) {
+        console.warn('Failed to switch camera device:', err);
       }
     }
   };
@@ -350,11 +455,19 @@ export const ChannelView: React.FC<ChannelViewProps> = ({
   const handleUpdateAudioSettings = async (settings: {
     inputDeviceId: string;
     outputDeviceId: string;
+    videoDeviceId: string;
     inputVolume: number;
     outputVolume: number;
     profile: 'isolation' | 'studio' | 'custom';
     autoSensitivity: boolean;
   }) => {
+    setSelectedInputId(settings.inputDeviceId);
+    setSelectedOutputId(settings.outputDeviceId);
+    setSelectedVideoId(settings.videoDeviceId);
+    setInputVolume(Math.round(settings.inputVolume * 100));
+    setOutputVolume(Math.round(settings.outputVolume * 100));
+    setInputProfile(settings.profile);
+
     try {
       const constraints: MediaTrackConstraints = {
         deviceId: settings.inputDeviceId && settings.inputDeviceId !== 'default'
@@ -381,6 +494,11 @@ export const ChannelView: React.FC<ChannelViewProps> = ({
     } catch (err) {
       console.warn('Failed to switch audio input device:', err);
     }
+  };
+
+  const openSettingsTab = (tab: string = 'voice') => {
+    setSettingsInitialTab(tab);
+    setIsSettingsOpen(true);
   };
 
   return (
@@ -417,7 +535,22 @@ export const ChannelView: React.FC<ChannelViewProps> = ({
           onRequestScreenShare={() => setIsScreenModalOpen(true)}
           onStopScreenShare={handleStopScreenShare}
           onDisconnect={onLeaveRoom}
-          onOpenSettings={() => setIsSettingsOpen(true)}
+          onOpenSettings={openSettingsTab}
+          audioInputs={audioInputs}
+          audioOutputs={audioOutputs}
+          videoInputs={videoInputs}
+          selectedInputId={selectedInputId}
+          selectedOutputId={selectedOutputId}
+          selectedVideoId={selectedVideoId}
+          onSelectInput={setSelectedInputId}
+          onSelectOutput={setSelectedOutputId}
+          onSelectVideo={handleSelectCamera}
+          inputVolume={inputVolume}
+          outputVolume={outputVolume}
+          onInputVolumeChange={setInputVolume}
+          onOutputVolumeChange={setOutputVolume}
+          profile={inputProfile}
+          onProfileChange={setInputProfile}
         />
       </div>
 
@@ -447,6 +580,7 @@ export const ChannelView: React.FC<ChannelViewProps> = ({
       <SettingsModal
         isOpen={isSettingsOpen}
         self={self}
+        initialTab={settingsInitialTab}
         onClose={() => setIsSettingsOpen(false)}
         onUpdateNickname={handleUpdateNickname}
         onUpdateAudioSettings={handleUpdateAudioSettings}

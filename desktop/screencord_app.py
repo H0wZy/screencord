@@ -121,6 +121,11 @@ class ScreencordMainWindow(QMainWindow):
 
         self.setCentralWidget(self.view)
 
+        # Set custom Screencord window icon
+        icon_path = ROOT_DIR / "desktop" / "assets" / ("icon.ico" if sys.platform == "win32" else "icon.png")
+        if icon_path.exists():
+            self.setWindowIcon(QIcon(str(icon_path)))
+
     def closeEvent(self, event):
         if self.server_proc:
             print("[Desktop Native] Terminating background server process...")
@@ -133,6 +138,14 @@ class ScreencordMainWindow(QMainWindow):
 
 
 def main():
+    # Fix Windows taskbar grouping and Python icon replacement
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("screencord.app.v1")
+        except Exception:
+            pass
+
     # Pass custom server URL if provided as CLI argument (e.g. connecting to friend's Tailscale IP)
     target_url = sys.argv[1] if len(sys.argv) > 1 else SERVER_URL
 
@@ -147,6 +160,10 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName("Screencord")
     app.setOrganizationName("Screencord")
+
+    icon_path = ROOT_DIR / "desktop" / "assets" / ("icon.ico" if sys.platform == "win32" else "icon.png")
+    if icon_path.exists():
+        app.setWindowIcon(QIcon(str(icon_path)))
 
     server_proc = None
     if "localhost" in target_url or "127.0.0.1" in target_url:
