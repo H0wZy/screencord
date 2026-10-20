@@ -7,6 +7,11 @@ export class AudioDetector {
   private silenceTimer: any = null;
   private onSpeakingChange: (isSpeaking: boolean) => void;
 
+  // Dual-threshold Schmitt trigger to eliminate VAD chatter / UI flickering
+  private readonly thresholdHigh = 22; // Enter speaking state
+  private readonly thresholdLow = 14;  // Maintain speaking state
+  private readonly hangoverMs = 450;   // Hold speaking halo for 450ms after speech pause
+
   constructor(onSpeakingChange: (isSpeaking: boolean) => void) {
     this.onSpeakingChange = onSpeakingChange;
   }
@@ -20,7 +25,7 @@ export class AudioDetector {
       this.sourceNode = this.audioContext.createMediaStreamSource(mediaStream);
       this.analyser = this.audioContext.createAnalyser();
       this.analyser.fftSize = 256;
-      this.analyser.smoothingTimeConstant = 0.4;
+      this.analyser.smoothingTimeConstant = 0.5;
       this.sourceNode.connect(this.analyser);
 
       const bufferLength = this.analyser.frequencyBinCount;
@@ -37,24 +42,32 @@ export class AudioDetector {
           sum += dataArray[i];
         }
         const average = sum / bufferLength;
-        const threshold = 18; // Voice detection threshold (0-255)
 
-        if (average > threshold) {
-          if (!this.isSpeaking) {
+        if (!this.isSpeaking) {
+          // Require strong vocal signal to trigger speaking
+          if (average >= this.thresholdHigh) {
             this.isSpeaking = true;
             this.onSpeakingChange(true);
+            if (this.silenceTimer) {
+              clearTimeout(this.silenceTimer);
+              this.silenceTimer = null;
+            }
           }
-          if (this.silenceTimer) {
-            clearTimeout(this.silenceTimer);
-            this.silenceTimer = null;
+        } else {
+          // Already speaking: maintain until falling below thresholdLow
+          if (average >= this.thresholdLow) {
+            if (this.silenceTimer) {
+              clearTimeout(this.silenceTimer);
+              this.silenceTimer = null;
+            }
+          } else if (!this.silenceTimer) {
+            // Volume fell below thresholdLow: start hangover countdown
+            this.silenceTimer = setTimeout(() => {
+              this.isSpeaking = false;
+              this.silenceTimer = null;
+              this.onSpeakingChange(false);
+            }, this.hangoverMs);
           }
-        } else if (this.isSpeaking && !this.silenceTimer) {
-          // Keep speaking state active for 300ms to prevent flickering
-          this.silenceTimer = setTimeout(() => {
-            this.isSpeaking = false;
-            this.silenceTimer = null;
-            this.onSpeakingChange(false);
-          }, 350);
         }
 
         this.animFrameId = requestAnimationFrame(checkVolume);
@@ -80,7 +93,7 @@ export class AudioDetector {
       this.sourceNode = null;
     }
     if (this.audioContext && this.audioContext.state !== 'closed') {
-      this.audioContext.close();
+      this.audioContext.close().catch(() => {});
       this.audioContext = null;
     }
     if (this.isSpeaking) {

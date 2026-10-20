@@ -12,7 +12,7 @@ interface UserTileProps {
   onTurnOffCamera?: () => void;
 }
 
-export const UserTile: React.FC<UserTileProps> = ({
+const UserTileComponent: React.FC<UserTileProps> = ({
   participant,
   isSelf = false,
   videoTrack = null,
@@ -164,3 +164,5 @@ export const UserTile: React.FC<UserTileProps> = ({
     </div>
   );
 };
+
+export const UserTile = React.memo(UserTileComponent);

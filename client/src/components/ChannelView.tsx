@@ -81,7 +81,7 @@ export const ChannelView: React.FC<ChannelViewProps> = ({
 
   // Load and refresh devices
   const refreshDevices = async () => {
-    const res = await enumerateMediaDevices();
+    const res = await enumerateMediaDevices(true);
     setAudioInputs(res.audioInputs);
     setAudioOutputs(res.audioOutputs);
     setVideoInputs(res.videoInputs);
@@ -235,9 +235,18 @@ export const ChannelView: React.FC<ChannelViewProps> = ({
         }
 
         case 'user-state-changed': {
-          setParticipants((prev) =>
-            prev.map((p) => (p.id === msg.payload.peerId ? { ...p, ...msg.payload.state } : p))
-          );
+          setParticipants((prev) => {
+            let hasChanged = false;
+            const next = prev.map((p) => {
+              if (p.id !== msg.payload.peerId) return p;
+              const keys = Object.keys(msg.payload.state) as (keyof Participant)[];
+              const isDifferent = keys.some((k) => (p as any)[k] !== (msg.payload.state as any)[k]);
+              if (!isDifferent) return p;
+              hasChanged = true;
+              return { ...p, ...msg.payload.state };
+            });
+            return hasChanged ? next : prev;
+          });
           break;
         }
 
@@ -383,6 +392,43 @@ export const ChannelView: React.FC<ChannelViewProps> = ({
         console.warn('Failed to switch camera device:', err);
       }
     }
+  };
+
+  // Switch Microphone Input Device
+  const handleSelectMicrophone = async (deviceId: string) => {
+    setSelectedInputId(deviceId);
+    try {
+      const constraints: MediaTrackConstraints = {
+        deviceId: deviceId && deviceId !== 'default' ? { exact: deviceId } : undefined,
+        echoCancellation: inputProfile !== 'studio',
+        noiseSuppression: inputProfile !== 'studio',
+      };
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: constraints });
+      const newTrack = stream.getAudioTracks()[0];
+      if (newTrack && localUserStream) {
+        const oldTrack = localUserStream.getAudioTracks()[0];
+        if (oldTrack) {
+          oldTrack.stop();
+          localUserStream.removeTrack(oldTrack);
+        }
+        localUserStream.addTrack(newTrack);
+        peerManagerRef.current?.setLocalUserStream(localUserStream);
+        audioDetectorRef.current?.start(newTrack);
+      }
+    } catch (err) {
+      console.warn('Failed to switch microphone:', err);
+    }
+  };
+
+  // Switch Speaker Output Device
+  const handleSelectOutput = (deviceId: string) => {
+    setSelectedOutputId(deviceId);
+    const audioEls = document.querySelectorAll('audio, video');
+    audioEls.forEach((el: any) => {
+      if (typeof el.setSinkId === 'function') {
+        el.setSinkId(deviceId).catch(() => {});
+      }
+    });
   };
 
   // Start Screen Sharing
@@ -542,8 +588,8 @@ export const ChannelView: React.FC<ChannelViewProps> = ({
           selectedInputId={selectedInputId}
           selectedOutputId={selectedOutputId}
           selectedVideoId={selectedVideoId}
-          onSelectInput={setSelectedInputId}
-          onSelectOutput={setSelectedOutputId}
+          onSelectInput={handleSelectMicrophone}
+          onSelectOutput={handleSelectOutput}
           onSelectVideo={handleSelectCamera}
           inputVolume={inputVolume}
           outputVolume={outputVolume}

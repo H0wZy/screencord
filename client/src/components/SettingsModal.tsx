@@ -16,6 +16,7 @@ import {
   Volume2,
 } from 'lucide-react';
 import { Participant } from '../types.js';
+import { enumerateMediaDevices } from '../services/deviceService.js';
 import {
   loadShortcuts,
   saveShortcuts,
@@ -110,23 +111,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
     const loadDevices = async () => {
       try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const inputs = devices.filter((d) => d.kind === 'audioinput');
-        const outputs = devices.filter((d) => d.kind === 'audiooutput');
-        const vids = devices.filter((d) => d.kind === 'videoinput');
+        const res = await enumerateMediaDevices(true);
+        setAudioInputDevices(res.audioInputs);
+        setAudioOutputDevices(res.audioOutputs);
+        setVideoDevices(res.videoInputs);
 
-        setAudioInputDevices(inputs);
-        setAudioOutputDevices(outputs);
-        setVideoDevices(vids);
-
-        if (inputs.length > 0 && selectedInputId === 'default') {
-          setSelectedInputId(inputs[0].deviceId);
+        if (res.audioInputs.length > 0 && selectedInputId === 'default') {
+          setSelectedInputId(res.audioInputs[0].deviceId);
         }
-        if (outputs.length > 0 && selectedOutputId === 'default') {
-          setSelectedOutputId(outputs[0].deviceId);
+        if (res.audioOutputs.length > 0 && selectedOutputId === 'default') {
+          setSelectedOutputId(res.audioOutputs[0].deviceId);
         }
-        if (vids.length > 0 && selectedVideoId === 'default') {
-          setSelectedVideoId(vids[0].deviceId);
+        if (res.videoInputs.length > 0 && selectedVideoId === 'default') {
+          setSelectedVideoId(res.videoInputs[0].deviceId);
         }
       } catch (err) {
         console.warn('Failed to enumerate media devices:', err);
@@ -134,10 +131,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     };
 
     loadDevices();
-    navigator.mediaDevices.addEventListener('devicechange', loadDevices);
-    return () => {
-      navigator.mediaDevices.removeEventListener('devicechange', loadDevices);
-    };
+    if (typeof navigator !== 'undefined' && navigator.mediaDevices?.addEventListener) {
+      navigator.mediaDevices.addEventListener('devicechange', loadDevices);
+      return () => {
+        navigator.mediaDevices.removeEventListener('devicechange', loadDevices);
+      };
+    }
   }, [isOpen]);
 
   // ESC key press to close settings
@@ -414,9 +413,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     onChange={(e) => setSelectedInputId(e.target.value)}
                     className="bg-[#1e1f22] text-white text-sm px-3.5 py-2.5 rounded-lg border border-[#2b2d31] focus:border-[#5865f2] focus:outline-none cursor-pointer"
                   >
-                    {audioInputDevices.map((d) => (
-                      <option key={d.deviceId || 'default'} value={d.deviceId}>
-                        {d.label || `Microfone (${d.deviceId.slice(0, 8)})`}
+                    {audioInputDevices.map((d, idx) => (
+                      <option key={d.deviceId || `in-${idx}`} value={d.deviceId}>
+                        {d.label || `Microfone ${idx + 1}`}
                       </option>
                     ))}
                   </select>
@@ -447,9 +446,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     onChange={(e) => setSelectedOutputId(e.target.value)}
                     className="bg-[#1e1f22] text-white text-sm px-3.5 py-2.5 rounded-lg border border-[#2b2d31] focus:border-[#5865f2] focus:outline-none cursor-pointer"
                   >
-                    {audioOutputDevices.map((d) => (
-                      <option key={d.deviceId || 'default'} value={d.deviceId}>
-                        {d.label || `Alto-falante (${d.deviceId.slice(0, 8)})`}
+                    {audioOutputDevices.map((d, idx) => (
+                      <option key={d.deviceId || `out-${idx}`} value={d.deviceId}>
+                        {d.label || `Alto-falante ${idx + 1}`}
                       </option>
                     ))}
                   </select>
@@ -538,9 +537,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     onChange={(e) => setSelectedVideoId(e.target.value)}
                     className="bg-[#1e1f22] text-white text-sm px-3.5 py-2.5 rounded-lg border border-[#2b2d31] focus:border-[#5865f2] focus:outline-none cursor-pointer"
                   >
-                    {videoDevices.map((d) => (
-                      <option key={d.deviceId || 'default'} value={d.deviceId}>
-                        {d.label || `Câmera (${d.deviceId.slice(0, 8)})`}
+                    {videoDevices.map((d, idx) => (
+                      <option key={d.deviceId || `cam-${idx}`} value={d.deviceId}>
+                        {d.label || `Câmera ${idx + 1}`}
                       </option>
                     ))}
                   </select>

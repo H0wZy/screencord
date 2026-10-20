@@ -14,7 +14,7 @@ interface StreamTileProps {
   onVolumeChange?: (volume: number) => void;
 }
 
-export const StreamTile: React.FC<StreamTileProps> = ({
+const StreamTileComponent: React.FC<StreamTileProps> = ({
   stream,
   presenterName,
   surfaceType = 'monitor',
@@ -137,3 +137,5 @@ export const StreamTile: React.FC<StreamTileProps> = ({
     </div>
   );
 };
+
+export const StreamTile = React.memo(StreamTileComponent);

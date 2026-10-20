@@ -127,7 +127,7 @@ export const StreamGrid: React.FC<StreamGridProps> = ({
       <div className={`w-full grid ${gridColsClass} gap-4 justify-center items-center`}>
         {/* Render Screen Shares */}
         {activeScreens.map((sc, idx) => (
-          <div key={`screen-${idx}`} className="w-full flex justify-center">
+          <div key={`screen-${sc.peerId || idx}`} className="w-full flex justify-center">
             <StreamTile
               stream={sc.stream}
               presenterName={sc.presenterName}
